@@ -72,7 +72,7 @@ void handleConnection(int connection_socket_descriptor) {
 
     create_result = pthread_create(&thread1, NULL, ThreadBehavior, (void *)t_data);
     if (create_result){
-        printf("BĹÄd przy prĂłbie utworzenia wÄtku, kod bĹÄdu: %d\n", create_result);
+        printf("Błąd przy próbbie utworzenia wątku, kod błędu: %d\n", create_result);
         exit(-1);
     }
 
@@ -98,7 +98,7 @@ int main(int argc, char* argv[])
     server_socket_descriptor = socket(AF_INET, SOCK_STREAM, 0);
     if (server_socket_descriptor < 0)
     {
-        fprintf(stderr, "%s: BĹÄd przy prĂłbie utworzenia gniazda..\n", argv[0]);
+        fprintf(stderr, "%s: Błąd przy próbbie utworzenia gniazda..\n", argv[0]);
         exit(1);
     }
     setsockopt(server_socket_descriptor, SOL_SOCKET, SO_REUSEADDR, (char*)&reuse_addr_val, sizeof(reuse_addr_val));
@@ -106,13 +106,13 @@ int main(int argc, char* argv[])
     bind_result = bind(server_socket_descriptor, (struct sockaddr*)&server_address, sizeof(struct sockaddr));
     if (bind_result < 0)
     {
-        fprintf(stderr, "%s: BĹÄd przy prĂłbie dowiÄzania adresu IP i numeru portu do gniazda.\n", argv[0]);
+        fprintf(stderr, "%s: Błąd przy próbbie dowiązzania adresu IP i numeru portu do gniazda.\n", argv[0]);
         exit(1);
     }
 
     listen_result = listen(server_socket_descriptor, QUEUE_SIZE);
     if (listen_result < 0) {
-        fprintf(stderr, "%s: BĹÄd przy prĂłbie ustawienia wielkoĹci kolejki.\n", argv[0]);
+        fprintf(stderr, "%s: Błąd przy próbbie ustawienia wielkości kolejki.\n", argv[0]);
         exit(1);
     }
 
@@ -121,7 +121,7 @@ int main(int argc, char* argv[])
         connection_socket_descriptor = accept(server_socket_descriptor, NULL, NULL);
         if (connection_socket_descriptor < 0)
         {
-            fprintf(stderr, "%s: BĹÄd przy prĂłbie utworzenia gniazda dla poĹÄczenia.\n", argv[0]);
+            fprintf(stderr, "%s: Błąd przy próbbie utworzenia gniazda dla połączenia.\n", argv[0]);
             exit(1);
         }
 
