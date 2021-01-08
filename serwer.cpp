@@ -15,9 +15,10 @@
 #include <vector>
 #include <string>
 #include <sstream>
+#include <algorithm>
 
 
-#define SERVER_PORT 1232
+#define SERVER_PORT 1234
 #define QUEUE_SIZE 5
 
 
@@ -28,12 +29,12 @@ struct thread_data_t
 };
 
 class User{
-    int user_fd;
+    int user_id;
     std::string user_name;
     
 public:
     User(int user_fd, std::string user_name){
-        this->user_fd = user_fd;
+        this->user_id = user_fd;
         this->user_name = std::move(user_name);
     }
 
@@ -42,7 +43,7 @@ public:
     }
 
     int getUserId(){
-        return this->user_fd;
+        return this->user_id;
     }
 };
 
@@ -56,6 +57,60 @@ public:
         users.push_back(new User(16, "user1"));
         users.push_back(new User(17, "user2"));
         return users;
+    }
+};
+
+class Message{
+    int sender_id;
+    int receiver_id;
+    std::string text;
+
+public:
+    Message(int sender_id, int receiver_id, std::string text){
+        this->sender_id = sender_id;
+        this->receiver_id = receiver_id;
+        this->text = std::move(text);
+    }
+
+    std::string getMessage() {
+        return this->text;
+    }
+
+    int getSenderId(){
+        return this->sender_id;
+    }
+
+    int getReceiverId(){
+        return this->receiver_id;
+    }
+};
+
+typedef std::vector<Message *> Messages;
+
+class MessagesRepository{
+public:
+    Messages getMessages(){
+        Messages messages;
+        messages.push_back(new Message(15, 16, "asia"));
+        messages.push_back(new Message(16, 15, "asiaasia"));
+        messages.push_back(new Message(15, 16, "asia2"));
+        messages.push_back(new Message(15, 17, "asia2"));
+        return messages;
+    }
+
+    Messages getUsersMessages(int user1, int user2){
+        const Messages &messages = getMessages();
+        Messages result;
+        std::copy_if (messages.begin(), messages.end(), std::back_inserter(result), [user2, user1](Message* m){
+            return (m->getReceiverId() == user1
+                    && m->getSenderId() == user2)
+                    ||
+                    (m->getReceiverId() == user2
+                     && m->getSenderId() == user1)
+                    ;
+        });
+
+        return result;
     }
 };
 
@@ -90,33 +145,43 @@ private:
 
 class Server{
     UsersRepository *usersRepository;
+    MessagesRepository *messagesRepository;
 
 public:
-    Server(UsersRepository* usersRepository){
+    Server(UsersRepository* usersRepository, MessagesRepository* messagesRepository){
         this->usersRepository = usersRepository;
+        this->messagesRepository = messagesRepository;
     }
 
-    Response process(const std::string& action){
+    Response process(int user_id, const std::string& action, const std::string& data){
         Response response;
-        if(action == "getUsers"){
+        if(action == "getUsers") {
             response.setAction("users");
-            for(auto* user: usersRepository->getUsers()) {
+            for (auto *user: usersRepository->getUsers()) {
                 std::stringstream ss;
                 ss << user->getUserName() << "," << user->getUserId();
                 response.setData(ss.str());
             }
+        }else if(action == "getMessages") {
+            response.setAction("messages");
+//            int user2 = std::stoi(data);
+            for (auto *message: messagesRepository->getUsersMessages(user_id, 16)) {
+                response.setData(message->getMessage());
+            }
         }
         return response;
     }
+
 };
 
 //funkcja opisujÄcÄ zachowanie wÄtku - musi przyjmowaÄ argument typu (void *) i zwracaÄ (void *)
 void *ThreadBehavior(void *t_data)
 {
-    Server *pServer = new Server(new UsersRepository());
     pthread_detach(pthread_self());
 
-    struct thread_data_t *th_data = (struct thread_data_t*)t_data;
+    auto *th_data = (struct thread_data_t*)t_data;
+    auto *pServer = new Server(new UsersRepository(), new MessagesRepository());
+
     //dostÄp do pĂłl struktury: (*th_data).pole
 
     printf("Nowe połączenie");
@@ -127,7 +192,7 @@ void *ThreadBehavior(void *t_data)
         }
         int read_result = static_cast<int>(read(th_data->connection_socket_descriptor, message, sizeof(message)));
         std::string m(message);
-        const std::string &buf = pServer->process(m).getText();
+        const std::string &buf = pServer->process(15, m, "").getText();
 
         write(th_data->connection_socket_descriptor, buf.c_str(), buf.length());
         printf(message);
