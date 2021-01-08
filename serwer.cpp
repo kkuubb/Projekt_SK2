@@ -18,7 +18,7 @@
 #include <algorithm>
 
 
-#define SERVER_PORT 1234
+#define SERVER_PORT 1235
 #define QUEUE_SIZE 5
 
 
@@ -94,7 +94,7 @@ public:
         messages.push_back(new Message(15, 16, "asia"));
         messages.push_back(new Message(16, 15, "asiaasia"));
         messages.push_back(new Message(15, 16, "asia2"));
-        messages.push_back(new Message(15, 17, "asia2"));
+        messages.push_back(new Message(15, 17, "asia3"));
         return messages;
     }
 
@@ -164,8 +164,8 @@ public:
             }
         }else if(action == "getMessages") {
             response.setAction("messages");
-//            int user2 = std::stoi(data);
-            for (auto *message: messagesRepository->getUsersMessages(user_id, 16)) {
+            int user2 = std::stoi(data);
+            for (auto *message: messagesRepository->getUsersMessages(user_id, user2)) {
                 response.setData(message->getMessage());
             }
         }
@@ -192,7 +192,7 @@ void *ThreadBehavior(void *t_data)
         }
         int read_result = static_cast<int>(read(th_data->connection_socket_descriptor, message, sizeof(message)));
         std::string m(message);
-        const std::string &buf = pServer->process(15, m, "").getText();
+        const std::string &buf = pServer->process(15, m, "16").getText();
 
         write(th_data->connection_socket_descriptor, buf.c_str(), buf.length());
         printf(message);
