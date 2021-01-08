@@ -16,9 +16,10 @@
 #include <string>
 #include <sstream>
 #include <algorithm>
+#include <iostream>
 
 
-#define SERVER_PORT 1235
+#define SERVER_PORT 1231
 #define QUEUE_SIZE 5
 
 
@@ -143,6 +144,27 @@ private:
     std::vector<std::string> data;
 };
 
+class Request{
+    std::string action;
+    std::vector<std::string> data;
+
+public:
+    Request(std::string data){
+        std::string delimiter = ":";
+        std::vector<std::string> parts;
+        size_t pos = 0;
+        std::string token;
+        for (int i = 0; i < 2; ++i) {
+            pos = data.find(delimiter))
+            token = data.substr(0, pos);
+            parts.push_back(token);
+            data.erase(0, pos + delimiter.length());
+        }
+        parts.push_back(data);
+    }
+//    getAction();
+};
+
 class Server{
     UsersRepository *usersRepository;
     MessagesRepository *messagesRepository;
@@ -166,7 +188,9 @@ public:
             response.setAction("messages");
             int user2 = std::stoi(data);
             for (auto *message: messagesRepository->getUsersMessages(user_id, user2)) {
-                response.setData(message->getMessage());
+                std::stringstream ss;
+                ss << message->getSenderId() << "," << message->getMessage();
+                response.setData(ss.str());
             }
         }
         return response;
