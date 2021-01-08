@@ -51,10 +51,14 @@ class UsersRepository{
 void *ThreadBehavior(void *t_data)
 {
     pthread_detach(pthread_self());
+
     struct thread_data_t *th_data = (struct thread_data_t*)t_data;
     //dostÄp do pĂłl struktury: (*th_data).pole
-    //TODO (przy zadaniu 1) klawiatura -> wysyĹanie albo odbieranie -> wyĹwietlanie
 
+
+//    while (1) {
+//        int read_result = static_cast<int>(read(client_fd, message, sizeof(message)));
+//    }
     pthread_exit(NULL);
 }
 
@@ -69,6 +73,9 @@ void handleConnection(int connection_socket_descriptor) {
     //dane, ktĂłre zostanÄ przekazane do wÄtku
     //TODO dynamiczne utworzenie instancji struktury thread_data_t o nazwie t_data (+ w odpowiednim miejscu zwolnienie pamiÄci)
     //TODO wypeĹnienie pĂłl struktury
+    auto *t_data = new thread_data_t;
+    memset(t_data, 0, sizeof(thread_data_t));
+    t_data->connection_socket_descriptor = connection_socket_descriptor;
 
     create_result = pthread_create(&thread1, NULL, ThreadBehavior, (void *)t_data);
     if (create_result){
