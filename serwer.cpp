@@ -11,6 +11,9 @@
 #include <string.h>
 #include <time.h>
 #include <pthread.h>
+#include <utility>
+#include <vector>
+#include <string>
 
 #define SERVER_PORT 1234
 #define QUEUE_SIZE 5
@@ -18,7 +21,30 @@
 //struktura zawierajÄca dane, ktĂłre zostanÄ przekazane do wÄtku
 struct thread_data_t
 {
-//TODO
+    int connection_socket_descriptor;
+};
+
+class User{
+    int user_fd;
+    std::string user_name;
+    
+public:
+    User(int user_fd, std::string user_name){
+        this->user_fd = user_fd;
+        this->user_name = std::move(user_name);
+    }
+};
+
+typedef std::vector<User *> Users;
+
+class UsersRepository{
+    Users getUsers(){
+        Users users;
+        users.push_back(new User(15, "asia"));
+        users.push_back(new User(16, "user1"));
+        users.push_back(new User(17, "user2"));
+        return users;
+    }
 };
 
 //funkcja opisujÄcÄ zachowanie wÄtku - musi przyjmowaÄ argument typu (void *) i zwracaÄ (void *)
