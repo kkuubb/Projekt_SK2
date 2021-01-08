@@ -14,9 +14,12 @@
 #include <utility>
 #include <vector>
 #include <string>
+#include <sstream>
 
-#define SERVER_PORT 1234
+
+#define SERVER_PORT 1232
 #define QUEUE_SIZE 5
+
 
 //struktura zawierajÄca dane, ktĂłre zostanÄ przekazane do wÄtku
 struct thread_data_t
@@ -33,11 +36,20 @@ public:
         this->user_fd = user_fd;
         this->user_name = std::move(user_name);
     }
+
+    std::string getUserName() {
+        return this->user_name;
+    }
+
+    int getUserId(){
+        return this->user_fd;
+    }
 };
 
 typedef std::vector<User *> Users;
 
 class UsersRepository{
+public:
     Users getUsers(){
         Users users;
         users.push_back(new User(15, "asia"));
@@ -47,18 +59,79 @@ class UsersRepository{
     }
 };
 
+class Response{
+public:
+
+    std::string getText(){
+        std::stringstream ss;
+        std::string body;
+        body += this->action + ":";
+
+        for(const auto& s : this->data){
+            body+="["+s+"]";
+        }
+
+        ss << body.length() + 1 << ":" << body;
+        return ss.str() ;
+    }
+
+    void setAction(std::string action_name){
+        this->action = std::move(action_name);
+    }
+
+    void setData(const std::string& datum) {
+        this->data.push_back(datum);
+    }
+
+private:
+    std::string action;
+    std::vector<std::string> data;
+};
+
+class Server{
+    UsersRepository *usersRepository;
+
+public:
+    Server(UsersRepository* usersRepository){
+        this->usersRepository = usersRepository;
+    }
+
+    Response process(const std::string& action){
+        Response response;
+        if(action == "getUsers"){
+            response.setAction("users");
+            for(auto* user: usersRepository->getUsers()) {
+                std::stringstream ss;
+                ss << user->getUserName() << "," << user->getUserId();
+                response.setData(ss.str());
+            }
+        }
+        return response;
+    }
+};
+
 //funkcja opisujÄcÄ zachowanie wÄtku - musi przyjmowaÄ argument typu (void *) i zwracaÄ (void *)
 void *ThreadBehavior(void *t_data)
 {
+    Server *pServer = new Server(new UsersRepository());
     pthread_detach(pthread_self());
 
     struct thread_data_t *th_data = (struct thread_data_t*)t_data;
     //dostÄp do pĂłl struktury: (*th_data).pole
 
+    printf("Nowe połączenie");
+    while (1) {
+        char message[1000];
+        for (int i = 0; i < 1000; ++i) {
+            message[i] = 0;
+        }
+        int read_result = static_cast<int>(read(th_data->connection_socket_descriptor, message, sizeof(message)));
+        std::string m(message);
+        const std::string &buf = pServer->process(m).getText();
 
-//    while (1) {
-//        int read_result = static_cast<int>(read(client_fd, message, sizeof(message)));
-//    }
+        write(th_data->connection_socket_descriptor, buf.c_str(), buf.length());
+        printf(message);
+    }
     pthread_exit(NULL);
 }
 
