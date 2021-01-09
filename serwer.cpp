@@ -19,7 +19,7 @@
 #include <iostream>
 
 
-#define SERVER_PORT 1231
+#define SERVER_PORT 1232
 #define QUEUE_SIZE 5
 
 
@@ -89,9 +89,9 @@ public:
 typedef std::vector<Message *> Messages;
 
 class MessagesRepository{
+    Messages messages;
 public:
     Messages getMessages(){
-        Messages messages;
         messages.push_back(new Message(15, 16, "asia"));
         messages.push_back(new Message(16, 15, "asiaasia"));
         messages.push_back(new Message(15, 16, "asia2"));
@@ -112,6 +112,10 @@ public:
         });
 
         return result;
+    }
+
+    void storeMessage(int sender, int receiver, std::string body) {
+        messages.push_back(new Message(sender, receiver, body));
     }
 };
 
@@ -145,24 +149,33 @@ private:
 };
 
 class Request{
-    std::string action;
-    std::vector<std::string> data;
-
+    std::vector<std::string> parts;
+    int user;
 public:
-    Request(std::string data){
+    Request(int user, std::string data){
+        this->user = user;
         std::string delimiter = ":";
-        std::vector<std::string> parts;
         size_t pos = 0;
         std::string token;
-        for (int i = 0; i < 2; ++i) {
-            pos = data.find(delimiter))
-            token = data.substr(0, pos);
-            parts.push_back(token);
-            data.erase(0, pos + delimiter.length());
-        }
+        pos = data.find(delimiter);
+        token = data.substr(0, pos);
+        parts.push_back(token);
+        data.erase(0, pos + delimiter.length());
         parts.push_back(data);
     }
-//    getAction();
+    
+    std::string getAction(){
+        return parts[0];
+    };
+
+    std::string getData(){
+        return parts[1];
+    }
+
+    int getUser(){
+        return user;
+    }
+
 };
 
 class Server{
@@ -175,28 +188,60 @@ public:
         this->messagesRepository = messagesRepository;
     }
 
-    Response process(int user_id, const std::string& action, const std::string& data){
+    Response process(Request* request){
+        Response r;
+        try {
+            return _process(request);
+        } catch (...) {
+            r.setAction("invalid");
+            return r;
+        }
+    }
+
+    Response _process(Request* request){
         Response response;
-        if(action == "getUsers") {
+        if(request->getAction() == "getUsers") {
             response.setAction("users");
             for (auto *user: usersRepository->getUsers()) {
                 std::stringstream ss;
                 ss << user->getUserName() << "," << user->getUserId();
                 response.setData(ss.str());
             }
-        }else if(action == "getMessages") {
+        }else if(request->getAction() == "getMessages") {
             response.setAction("messages");
-            int user2 = std::stoi(data);
-            for (auto *message: messagesRepository->getUsersMessages(user_id, user2)) {
+            int user2 = std::stoi(request->getData());
+            for (auto *message: messagesRepository->getUsersMessages(request->getUser(), user2)) {
                 std::stringstream ss;
                 ss << message->getSenderId() << "," << message->getMessage();
                 response.setData(ss.str());
             }
+        } else if (request->getAction() == "sendMessage"){
+            const std::string &string = request->getData();
+            size_t pos = string.find(',');
+            int receiver_id  = stoi(string.substr(0, pos));
+            std::string message = (string.substr(pos+1));
+            messagesRepository->storeMessage(request->getUser(), receiver_id, message);
+
+            response.setAction("OK");
         }
         return response;
     }
 
 };
+
+int getLength(int desc){
+    char buf[5];
+    int read_result = static_cast<int>(read(desc, buf, sizeof(buf))); 
+    if (buf[4] != ':'){
+        return -1;
+    }
+    buf[4]=0;
+    return atoi(buf);
+}
+
+MessagesRepository *pMessagesRepository = new MessagesRepository();
+UsersRepository *usersRepository = new UsersRepository();
+
 
 //funkcja opisujÄcÄ zachowanie wÄtku - musi przyjmowaÄ argument typu (void *) i zwracaÄ (void *)
 void *ThreadBehavior(void *t_data)
@@ -204,23 +249,27 @@ void *ThreadBehavior(void *t_data)
     pthread_detach(pthread_self());
 
     auto *th_data = (struct thread_data_t*)t_data;
-    auto *pServer = new Server(new UsersRepository(), new MessagesRepository());
+    auto *pServer = new Server(usersRepository, pMessagesRepository);
 
     //dostÄp do pĂłl struktury: (*th_data).pole
 
     printf("Nowe połączenie");
     while (1) {
-        char message[1000];
-        for (int i = 0; i < 1000; ++i) {
-            message[i] = 0;
-        }
-        int read_result = static_cast<int>(read(th_data->connection_socket_descriptor, message, sizeof(message)));
-        std::string m(message);
-        const std::string &buf = pServer->process(15, m, "16").getText();
+        int length = getLength(th_data->connection_socket_descriptor);
+        if (length != -1) {
+            char message[1000];
+            for (int i = 0; i < 1000; ++i) {
+                message[i] = 0;
+            }
+            int read_result = static_cast<int>(read(th_data->connection_socket_descriptor, message, length !=0 ? length : sizeof(message)));
+            std::string m(message);
+            const std::string &buf = pServer->process(new Request(15, m)).getText();
 
-        write(th_data->connection_socket_descriptor, buf.c_str(), buf.length());
-        printf(message);
+            write(th_data->connection_socket_descriptor, buf.c_str(), buf.length());
+            printf(message);
+        }
     }
+
     pthread_exit(NULL);
 }
 
