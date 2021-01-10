@@ -1,23 +1,24 @@
 import tkinter as tk
+from typing import Callable
 
-from data import UsersAccessorInterface, MessagesAccessorInterface
-from models import Message
+from data import UsersAccessorInterface, MessagesAccessorInterface, SocketConnector, MessagesAccessor, UsersAccessor
+from models import Message, User
 from fake_data import FakeMessagesAccessor, FakeUsersAccessor
 
 
 class Application(tk.Frame):
     def __init__(self,
-                 user_id: int,
-                 users_accessor: UsersAccessorInterface,
-                 messages_accessor: MessagesAccessorInterface,
+                 socket: SocketConnector,
                  master=None
                  ):
         super().__init__(master)
         self.frame_users_nav = None
-        self.user_id = user_id
-        self.messages_accessor = messages_accessor
-        self.users_accessor = users_accessor
+        self.socket = socket
+        self.user_id = socket.this_user_id
+        self.messages_accessor = socket.messages_accessor
+        self.users_accessor = socket.users_accessor
         self.users_accessor.bind_on_change(self.create_widgets)
+        self.messages_accessor.bind_on_change(self.create_widgets)
         self.master = master
         self.grid()
         self.create_widgets()
@@ -61,12 +62,19 @@ class Application(tk.Frame):
             borderwidth=1
         )
         self.frame_users_nav = frame
-        for u in self.users_accessor.get_users():
+
+        def filter_users(user: User):
+            return user.id != self.socket.this_user_id
+
+        for u in filter(filter_users, self.users_accessor.get_users()):
             button = tk.Button(frame, text=u.name, fg="red")
             button.grid()
         frame.grid(row=0, column=1, sticky='e')
 
 
+connector = SocketConnector(1, UsersAccessor(), MessagesAccessor())
+connector.run()
+
 root = tk.Tk()
-app = Application(1, FakeUsersAccessor(), FakeMessagesAccessor(), master=root)
+app = Application(connector, master=root)
 app.mainloop()

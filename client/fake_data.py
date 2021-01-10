@@ -28,4 +28,4 @@ class FakeUsersAccessor(UsersAccessorInterface):
             self.call_on_change()
             self.start_timer()
 
-        Timer(1, handle_change).start()
+        Timer(10, handle_change).start()

@@ -19,7 +19,7 @@
 #include <iostream>
 
 
-#define SERVER_PORT 1231
+#define SERVER_PORT 1230
 #define QUEUE_SIZE 5
 
 
@@ -130,10 +130,10 @@ public:
 };
 
 class Response{
-    std::string getLengthInfo(int length){
+    std::string getLengthInfo(int length, int bytes=5){
         std::string l = std::to_string(length);
         l += ':';
-        for (int i = 0; i <= 5-l.size(); ++i) {
+        for (int i = 0; i <= bytes-l.size(); ++i) {
             l.insert(0, "0");
         }
         return l;
@@ -147,7 +147,7 @@ public:
         body += this->action + ":";
 
         for(const auto& s : this->data){
-            body+="["+s+"]";
+            body+=getLengthInfo(s.size(), 4) + s;
         }
 
         ss << getLengthInfo(body.length()) << body;
@@ -215,6 +215,19 @@ public:
             write(u->getUserId(), response.getText().c_str(), response.getText().length());
         }
     }
+
+    void emitActionToUser(User* user, std::string action, const std::string& data) {
+        Response response;
+        response.setAction(std::move(action));
+        response.setData(data);
+        write(user->getUserId(), response.getText().c_str(), response.getText().length());
+    }
+    
+    void emitResponse(User* user, Response* response){
+        write(user->getUserId(), response->getText().c_str(), response->getText().size());
+    }
+
+
 };
 
 class Server{
@@ -275,7 +288,10 @@ public:
 
     void loginUser(User* user){
         emitter->emitActionToUsers(usersRepository->getUsers(), "loginUser", std::to_string(user->getUserId()));
+        emitter->emitActionToUser(user, "your_id", std::to_string(user->getUserId()));
         usersRepository->storeUser(user);
+        Response response = process(new Request(user->getUserId(), "getUsers"));
+        emitter->emitResponse(user, &response);
     }
 };
 
