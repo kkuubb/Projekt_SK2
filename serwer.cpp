@@ -130,6 +130,15 @@ public:
 };
 
 class Response{
+    std::string getLengthInfo(int length){
+        std::string l = std::to_string(length);
+        l += ':';
+        for (int i = 0; i <= 5-l.size(); ++i) {
+            l.insert(0, "0");
+        }
+        return l;
+    }
+
 public:
     std::stringstream  ss;
     std::string getText(){
@@ -141,7 +150,7 @@ public:
             body+="["+s+"]";
         }
 
-        ss << body.length() + 1 << ":" << body;
+        ss << getLengthInfo(body.length()) << body;
         return ss.str() ;
     }
 
