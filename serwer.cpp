@@ -19,7 +19,7 @@
 #include <iostream>
 
 
-#define SERVER_PORT 1232
+#define SERVER_PORT 1231
 #define QUEUE_SIZE 5
 
 
@@ -51,13 +51,23 @@ public:
 typedef std::vector<User *> Users;
 
 class UsersRepository{
+    Users users;
 public:
     Users getUsers(){
-        Users users;
-        users.push_back(new User(15, "asia"));
-        users.push_back(new User(16, "user1"));
-        users.push_back(new User(17, "user2"));
         return users;
+    }
+
+    void storeUser(User* user){
+        users.push_back(user);
+    }
+
+    void removeUser(int user){
+        Users result;
+        std::copy(users.begin(), users.end(), std::back_inserter(result));
+        users.clear();
+        std::copy_if (result.begin(), result.end(), std::back_inserter(users), [user](User* u) {
+            return (u->getUserId() != user);
+        });
     }
 };
 
@@ -114,12 +124,8 @@ public:
         return result;
     }
 
-    void storeMessage(int sender, int receiver, std::string body) {
-        messages.push_back(new Message(sender, receiver, body));
-    }
-
     void storeMessage(Message* message) {
-        storeMessage(message->getSenderId(), message->getReceiverId(), message->getMessage());
+        messages.push_back(message);
     }
 };
 
@@ -191,6 +197,15 @@ public:
         response.setData(response.ss.str());
         write(message->getReceiverId(), response.getText().c_str(), response.getText().length());
     }
+
+    void emitActionToUsers(Users users, std::string action, std::string data) {
+        Response response;
+        response.setAction(action);
+        response.setData(data);
+        for (auto* u : users) {
+            write(u->getUserId(), response.getText().c_str(), response.getText().length());
+        }
+    }
 };
 
 class Server{
@@ -243,11 +258,24 @@ public:
         }
         return response;
     }
+
+    void removeUser(int user){
+        usersRepository->removeUser(user);
+        emitter->emitActionToUsers(usersRepository->getUsers(), "logoutUser", std::to_string(user));
+    }
+
+    void loginUser(User* user){
+        emitter->emitActionToUsers(usersRepository->getUsers(), "loginUser", std::to_string(user->getUserId()));
+        usersRepository->storeUser(user);
+    }
 };
 
 int getLength(int desc){
     char buf[5];
-    int read_result = static_cast<int>(read(desc, buf, sizeof(buf))); 
+    int read_result = static_cast<int>(read(desc, buf, sizeof(buf)));
+    if(read_result == 0){
+        return -2;
+    }
     if (buf[4] != ':'){
         return -1;
     }
@@ -267,12 +295,13 @@ void *ThreadBehavior(void *t_data)
     auto *th_data = (struct thread_data_t*)t_data;
     auto *pServer = new Server(usersRepository, pMessagesRepository, new Emitter);
 
+    pServer->loginUser(new User(th_data->connection_socket_descriptor, "user"));
     //dostÄp do pĂłl struktury: (*th_data).pole
 
     printf("Nowe połączenie: %d\n", th_data->connection_socket_descriptor);
     while (1) {
         int length = getLength(th_data->connection_socket_descriptor);
-        if (length != -1) {
+        if (length > -1) {
             char message[1000];
             for (int i = 0; i < 1000; ++i) {
                 message[i] = 0;
@@ -283,6 +312,10 @@ void *ThreadBehavior(void *t_data)
 
             write(th_data->connection_socket_descriptor, buf.c_str(), buf.length());
             printf(message);
+        }else if(length == -2){
+            printf("zerwano");
+            pServer->removeUser(th_data->connection_socket_descriptor);
+            break;
         }
     }
 
