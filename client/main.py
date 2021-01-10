@@ -1,68 +1,7 @@
 import tkinter as tk
-from random import random
-from threading import Timer
-from typing import List
 
-
-class User:
-    def __init__(self, id: int, name: str):
-        self.id = id
-        self.name = name
-
-
-class Message:
-    def __init__(self, sender: int, receiver: int, body: str):
-        self.receiver = receiver
-        self.sender = sender
-        self.body = body
-
-
-class AccessorInterface:
-    def __init__(self):
-        self.on_change = None
-
-    def bind_on_change(self, function):
-        self.on_change = function
-
-    def call_on_change(self):
-        if self.on_change:
-            self.on_change()
-
-
-class UsersAccessorInterface(AccessorInterface):
-
-    def get_users(self) -> List[User]:
-        raise NotImplemented
-
-
-class FakeUsersAccessor(UsersAccessorInterface):
-    def __init__(self):
-        super().__init__()
-        self.users: List[User] = [User(id, f"user{id}") for id in range(5)]
-        self.start_timer()
-
-    def get_users(self) -> List[User]:
-        return self.users
-
-    def start_timer(self):
-        def handle_change():
-            start = int(random() * 10)
-            len = int(random() * 15)
-            self.users = [User(id, f"user{id}") for id in range(start, start+len)]
-            self.call_on_change()
-            self.start_timer()
-
-        Timer(1, handle_change).start()
-
-
-class MessagesAccessorInterface:
-    def get_messages(self) -> List[Message]:
-        raise NotImplemented
-
-
-class FakeMessagesAccessor(MessagesAccessorInterface):
-    def get_messages(self) -> List[Message]:
-        return [Message((id%2), ((id+1)%2), f"message{id}") for id in range(5)]
+from data import Message, UsersAccessorInterface, MessagesAccessorInterface
+from fake_data import FakeMessagesAccessor, FakeUsersAccessor
 
 
 class Application(tk.Frame):
@@ -86,14 +25,6 @@ class Application(tk.Frame):
         return message.sender == self.user_id
 
     def create_widgets(self):
-        # self.hi_there = tk.Button(self)
-        # self.hi_there["text"] = "Hello World\n(click me)"
-        # self.hi_there["command"] = self.say_hi
-        # self.hi_there.pack(side="top")
-        #
-        # self.quit = tk.Button(self, text="QUIT", fg="red",
-        #                       command=self.master.destroy)
-        # self.quit.pack(side="bottom")
         chat = tk.Frame(self, width=200)
 
         for m in self.messages_accessor.get_messages():
