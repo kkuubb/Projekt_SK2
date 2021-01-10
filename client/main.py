@@ -1,4 +1,6 @@
 import tkinter as tk
+from random import random
+from threading import Timer
 from typing import List
 
 
@@ -15,14 +17,42 @@ class Message:
         self.body = body
 
 
-class UsersAccessorInterface:
+class AccessorInterface:
+    def __init__(self):
+        self.on_change = None
+
+    def bind_on_change(self, function):
+        self.on_change = function
+
+    def call_on_change(self):
+        if self.on_change:
+            self.on_change()
+
+
+class UsersAccessorInterface(AccessorInterface):
+
     def get_users(self) -> List[User]:
         raise NotImplemented
 
 
 class FakeUsersAccessor(UsersAccessorInterface):
+    def __init__(self):
+        super().__init__()
+        self.users: List[User] = [User(id, f"user{id}") for id in range(5)]
+        self.start_timer()
+
     def get_users(self) -> List[User]:
-        return [User(id, f"user{id}") for id in range(5)]
+        return self.users
+
+    def start_timer(self):
+        def handle_change():
+            start = int(random() * 10)
+            len = int(random() * 15)
+            self.users = [User(id, f"user{id}") for id in range(start, start+len)]
+            self.call_on_change()
+            self.start_timer()
+
+        Timer(1, handle_change).start()
 
 
 class MessagesAccessorInterface:
@@ -43,9 +73,11 @@ class Application(tk.Frame):
                  master=None
                  ):
         super().__init__(master)
+        self.frame_users_nav = None
         self.user_id = user_id
         self.messages_accessor = messages_accessor
         self.users_accessor = users_accessor
+        self.users_accessor.bind_on_change(self.create_widgets)
         self.master = master
         self.grid()
         self.create_widgets()
@@ -89,11 +121,14 @@ class Application(tk.Frame):
         self.users_nav_bar()
 
     def users_nav_bar(self):
+        if self.frame_users_nav:
+            self.frame_users_nav.destroy()
         frame = tk.Frame(
             self,
             relief=tk.RAISED,
             borderwidth=1
         )
+        self.frame_users_nav = frame
         for u in self.users_accessor.get_users():
             button = tk.Button(frame, text=u.name, fg="red")
             button.grid()
