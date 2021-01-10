@@ -117,11 +117,15 @@ public:
     void storeMessage(int sender, int receiver, std::string body) {
         messages.push_back(new Message(sender, receiver, body));
     }
+
+    void storeMessage(Message* message) {
+        storeMessage(message->getSenderId(), message->getReceiverId(), message->getMessage());
+    }
 };
 
 class Response{
 public:
-
+    std::stringstream  ss;
     std::string getText(){
         std::stringstream ss;
         std::string body;
@@ -178,14 +182,26 @@ public:
 
 };
 
+class Emitter{
+public:
+    void emitMessageToReceiver(Message* message){
+        Response response;
+        response.setAction("newMessage");
+        response.ss << message->getSenderId() << "," << message->getMessage();
+        response.setData(response.ss.str());
+        write(message->getReceiverId(), response.getText().c_str(), response.getText().length());
+    }
+};
+
 class Server{
     UsersRepository *usersRepository;
     MessagesRepository *messagesRepository;
-
+    Emitter* emitter;
 public:
-    Server(UsersRepository* usersRepository, MessagesRepository* messagesRepository){
+    Server(UsersRepository* usersRepository, MessagesRepository* messagesRepository, Emitter* emitter){
         this->usersRepository = usersRepository;
         this->messagesRepository = messagesRepository;
+        this->emitter = emitter;
     }
 
     Response process(Request* request){
@@ -219,14 +235,14 @@ public:
             const std::string &string = request->getData();
             size_t pos = string.find(',');
             int receiver_id  = stoi(string.substr(0, pos));
-            std::string message = (string.substr(pos+1));
-            messagesRepository->storeMessage(request->getUser(), receiver_id, message);
-
+            std::string message_body = (string.substr(pos+1));
+            auto * message = new Message(request->getUser(), receiver_id, message_body);
+            messagesRepository->storeMessage(message);
+            emitter->emitMessageToReceiver(message);
             response.setAction("OK");
         }
         return response;
     }
-
 };
 
 int getLength(int desc){
@@ -249,11 +265,11 @@ void *ThreadBehavior(void *t_data)
     pthread_detach(pthread_self());
 
     auto *th_data = (struct thread_data_t*)t_data;
-    auto *pServer = new Server(usersRepository, pMessagesRepository);
+    auto *pServer = new Server(usersRepository, pMessagesRepository, new Emitter);
 
     //dostÄp do pĂłl struktury: (*th_data).pole
 
-    printf("Nowe połączenie");
+    printf("Nowe połączenie: %d\n", th_data->connection_socket_descriptor);
     while (1) {
         int length = getLength(th_data->connection_socket_descriptor);
         if (length != -1) {
@@ -263,7 +279,7 @@ void *ThreadBehavior(void *t_data)
             }
             int read_result = static_cast<int>(read(th_data->connection_socket_descriptor, message, length !=0 ? length : sizeof(message)));
             std::string m(message);
-            const std::string &buf = pServer->process(new Request(15, m)).getText();
+            const std::string &buf = pServer->process(new Request(th_data->connection_socket_descriptor, m)).getText();
 
             write(th_data->connection_socket_descriptor, buf.c_str(), buf.length());
             printf(message);
