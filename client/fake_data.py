@@ -2,7 +2,8 @@ from random import random
 from threading import Timer
 from typing import List
 
-from data import MessagesAccessorInterface, Message, UsersAccessorInterface, User
+from data import MessagesAccessorInterface, UsersAccessorInterface
+from models import User, Message
 
 
 class FakeMessagesAccessor(MessagesAccessorInterface):

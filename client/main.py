@@ -1,6 +1,7 @@
 import tkinter as tk
 
-from data import Message, UsersAccessorInterface, MessagesAccessorInterface
+from data import UsersAccessorInterface, MessagesAccessorInterface
+from models import Message
 from fake_data import FakeMessagesAccessor, FakeUsersAccessor
 
 
