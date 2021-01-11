@@ -145,6 +145,7 @@ class SocketConnector:
 
                 if request.get_action() == 'messages':
                     self.messages_accessor.clean()
+                    self.messages_accessor.call_on_change()
                     for part in request.get_parts():
                         sender_id, text = part.split(",")
                         sender_id = int(sender_id)
@@ -157,3 +158,8 @@ class SocketConnector:
         print(m)
         self.s.send(str.encode(m))
         self.current_room = int(id)
+
+    def send_message(self, body):
+        m = f"0000:sendMessage:{self.current_room}, {body}"
+        self.s.send(str.encode(m))
+        self.messages_accessor.store_message(Message(self.this_user_id, self.current_room, body))

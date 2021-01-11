@@ -19,7 +19,7 @@
 #include <iostream>
 
 
-#define SERVER_PORT 1230
+#define SERVER_PORT 1232
 #define QUEUE_SIZE 5
 
 
@@ -133,7 +133,8 @@ class Response{
     std::string getLengthInfo(int length, int bytes=5){
         std::string l = std::to_string(length);
         l += ':';
-        for (int i = 0; i <= bytes-l.size(); ++i) {
+        unsigned long zeros_to_begin = bytes - l.size();
+        for (int i = 0; i < zeros_to_begin; ++i) {
             l.insert(0, "0");
         }
         return l;
@@ -150,7 +151,7 @@ public:
             body+=getLengthInfo(s.size(), 4) + s;
         }
 
-        ss << getLengthInfo(body.length()) << body;
+        ss << getLengthInfo(body.length(), 5) << body;
         return ss.str() ;
     }
 

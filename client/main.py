@@ -14,6 +14,7 @@ class Application(tk.Frame):
         super().__init__(master)
         self.frame_users_nav = None
         self.chat_view = None
+        self.input_frame = None
         self.socket = socket
         self.user_id = socket.this_user_id
         self.messages_accessor = socket.messages_accessor
@@ -57,6 +58,17 @@ class Application(tk.Frame):
 
         chat.grid(row=0, column=0)
         self.users_nav_bar()
+        if self.input_frame:
+            self.input_frame.destroy()
+
+        self.input_frame = tk.Frame()
+        self.input_frame.grid(row=1)
+
+        input_field = tk.Text(self.input_frame, height=2, width=50)
+        input_field.grid()
+
+        send_button = tk.Button(self.input_frame, text="send", command=lambda: self.socket.send_message(input_field.get("1.0", "end-1c")))
+        send_button.grid()
 
     def users_nav_bar(self):
         if self.frame_users_nav:
