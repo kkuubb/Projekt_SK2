@@ -13,6 +13,7 @@ class Application(tk.Frame):
                  ):
         super().__init__(master)
         self.frame_users_nav = None
+        self.chat_view = None
         self.socket = socket
         self.user_id = socket.this_user_id
         self.messages_accessor = socket.messages_accessor
@@ -27,7 +28,11 @@ class Application(tk.Frame):
         return message.sender == self.user_id
 
     def create_widgets(self):
+        if self.chat_view:
+            self.chat_view.destroy()
+
         chat = tk.Frame(self, width=200)
+        self.chat_view = chat
 
         for m in self.messages_accessor.get_messages():
             mine = self.is_message_mine(m)
@@ -67,8 +72,12 @@ class Application(tk.Frame):
             return user.id != self.socket.this_user_id
 
         for u in filter(filter_users, self.users_accessor.get_users()):
-            button = tk.Button(frame, text=u.name, fg="red")
+            def handle_click(user_id):
+                print(f"nacisnieto {user_id}")
+                return lambda: self.socket.select_user(user_id)
+            button = tk.Button(frame, text=f"{u.name} {u.id}", fg="red", command=handle_click(u.id))
             button.grid()
+
         frame.grid(row=0, column=1, sticky='e')
 
 

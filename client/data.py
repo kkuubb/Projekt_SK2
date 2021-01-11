@@ -1,4 +1,5 @@
 from socket import socket
+from this import s
 from threading import Thread
 from typing import List
 
@@ -16,6 +17,9 @@ class AccessorInterface:
         if self.on_change:
             self.on_change()
 
+    def clean(self):
+        raise NotImplemented
+
 
 class UsersAccessorInterface(AccessorInterface):
 
@@ -25,9 +29,6 @@ class UsersAccessorInterface(AccessorInterface):
 
     def get_users(self) -> List[User]:
         return self.users
-
-    def clean(self):
-        raise NotImplemented
 
     def store_user(self, user: User):
         raise NotImplemented
@@ -65,6 +66,8 @@ class MessagesAccessor(MessagesAccessorInterface):
         self.messages.append(message)
         self.call_on_change()
 
+    def clean(self):
+        self.messages = []
 
 class Request:
     def __init__(self, data: str):
@@ -91,12 +94,14 @@ class SocketConnector:
 
     def __init__(self, this_user_id: int, users_accessor: UsersAccessorInterface,
                  messages_accessor: MessagesAccessorInterface):
+        self.current_room = None
         self.this_user_id = this_user_id
         self.messages_accessor = messages_accessor
         self.users_accessor = users_accessor
+        self.s = socket()
 
-    def run(self, port=1230):
-        s = socket()
+    def run(self, port=1232):
+        s = self.s
         s.connect(("localhost", port))
 
         def read():
@@ -114,8 +119,9 @@ class SocketConnector:
                 if request.get_action() == 'newMessage':
                     data = request.get_parts()[0]
                     parts = data.split(",", 1)
-                    message = Message(int(parts[0]), self.this_user_id, parts[1])
-                    self.messages_accessor.store_message(message)
+                    if int(parts[0]) == self.current_room:
+                        message = Message(int(parts[0]), self.this_user_id, parts[1])
+                        self.messages_accessor.store_message(message)
 
                 if request.get_action() == 'your_id':
                     self.this_user_id = int(request.get_parts()[0])
@@ -137,4 +143,17 @@ class SocketConnector:
                 if request.get_action() == 'logoutUser':
                     s.send(b"0000:getUsers")
 
+                if request.get_action() == 'messages':
+                    self.messages_accessor.clean()
+                    for part in request.get_parts():
+                        sender_id, text = part.split(",")
+                        sender_id = int(sender_id)
+                        self.messages_accessor.store_message(Message(sender_id, self.this_user_id, text))
+
         Thread(name='socket_receiver', target=read).start()
+
+    def select_user(self, id):
+        m = f"0000:getMessages:{id}"
+        print(m)
+        self.s.send(str.encode(m))
+        self.current_room = int(id)
