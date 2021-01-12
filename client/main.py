@@ -38,7 +38,7 @@ class Application(tk.Frame):
         if self.chat_view:
             self.chat_view.destroy()
 
-        chat = tk.Canvas(self.main_frame, width=200, height=400)
+        chat = tk.Canvas(self.main_frame, width=300, height=400)
         self.chat_view = tk.Frame(chat)
         self.render_messages(chat)
         chat.grid(row=0, column=0)
@@ -49,19 +49,20 @@ class Application(tk.Frame):
         self.get_input_element(self.main_frame).grid(row=1, column=0)
 
     def get_input_element(self, master):
-        self.input_frame = tk.Frame(master=master, background='red', bd=3, width=50, height=800)
+        self.input_frame = tk.Frame(master=master, background="gray", bd=3)
         #
         input_field = tk.Text(self.input_frame, height=2, width=50)
         input_field.pack(side=tk.LEFT)
         input_field.focus_force()
         input_field.bind("<Return>", lambda x: self.socket.send_message(input_field.get("1.0", "end-1c")))
         #
-        send_button = tk.Button(self.main_frame, text="send", command=lambda: self.socket.send_message(input_field.get("1.0", "end-1c")))
+        send_button = tk.Button(self.main_frame, text="send", relief="raised", command=lambda: self.socket.send_message(input_field.get("1.0", "end-1c")))
         send_button.grid(row=1, column=1)
         return self.input_frame
 
     def render_messages(self, master):
-        for m in self.messages_accessor.get_messages()[::-1][:20][::-1]:
+
+        for m in self.messages_accessor.get_messages()[-15:]:
             mine = self.is_message_mine(m)
 
             styles = {
@@ -77,10 +78,11 @@ class Application(tk.Frame):
 
             style_element = styles['element']['mine'] if mine else styles['element']['not_mine']
             style_grid = styles['grid']['mine'] if mine else styles['grid']['not_mine']
-            frame = tk.Label(master, width=300, padx=50)
+            frame = tk.Frame(master, width=300)
             message = tk.Label(frame, text=m.body, **style_element)
             message.pack(side='right' if mine else 'left', expand=True, fill='both')
-            frame.grid(padx=30, sticky='Ne')
+            frame.grid(sticky='s')
+            master.columnconfigure(1, weight=1)
 
     def users_nav_bar(self):
         if self.frame_users_nav:
@@ -98,7 +100,9 @@ class Application(tk.Frame):
             def handle_click(user_id):
                 print(f"nacisnieto {user_id}")
                 return lambda: self.socket.select_user(user_id)
-            button = tk.Button(frame, text=f"{u.name} {u.id}", fg="red", command=handle_click(u.id))
+
+            color = "green" if self.socket.current_room == u.id else None
+            button = tk.Button(frame, text=f"{u.name} {u.id}", fg="black", command=handle_click(u.id), bg=color, activebackground=color)
             button.grid()
 
         frame.grid(row=0, column=1, sticky='e')
@@ -108,10 +112,11 @@ connector = SocketConnector(1, UsersAccessor(), MessagesAccessor())
 connector.run()
 
 root = tk.Tk()
+root.title('komunikator tekstowy')
 # root.attributes('-zoomed', True)
 # root.columnconfigure(1, weight=1, minsize=800)
-root.wm_minsize(500,500)
-# root.wm_maxsize(500, 500)
+# root.wm_minsize(500,500)
+root.wm_maxsize(500, 500)
 # root.rowconfigure(0, weight=2)
 # root.columnconfigure(0, weight=1)
 # root.columnconfigure(0, weight=1)
