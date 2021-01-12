@@ -19,7 +19,7 @@
 #include <iostream>
 
 
-#define SERVER_PORT 1232
+#define SERVER_PORT 1230
 #define QUEUE_SIZE 5
 
 

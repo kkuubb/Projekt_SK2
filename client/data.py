@@ -62,9 +62,10 @@ class MessagesAccessor(MessagesAccessorInterface):
     def get_messages(self) -> List[Message]:
         return self.messages
 
-    def store_message(self, message):
+    def store_message(self, message, call_on_change=True):
         self.messages.append(message)
-        self.call_on_change()
+        if call_on_change:
+            self.call_on_change()
 
     def clean(self):
         self.messages = []
@@ -100,7 +101,7 @@ class SocketConnector:
         self.users_accessor = users_accessor
         self.s = socket()
 
-    def run(self, port=1232):
+    def run(self, port=1230):
         s = self.s
         s.connect(("localhost", port))
 
@@ -145,11 +146,12 @@ class SocketConnector:
 
                 if request.get_action() == 'messages':
                     self.messages_accessor.clean()
-                    self.messages_accessor.call_on_change()
                     for part in request.get_parts():
                         sender_id, text = part.split(",")
                         sender_id = int(sender_id)
-                        self.messages_accessor.store_message(Message(sender_id, self.this_user_id, text))
+                        self.messages_accessor.store_message(Message(sender_id, self.this_user_id, text), call_on_change=False)
+                    self.messages_accessor.call_on_change()
+
 
         Thread(name='socket_receiver', target=read).start()
 
