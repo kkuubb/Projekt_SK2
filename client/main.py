@@ -61,7 +61,7 @@ class Application(tk.Frame):
         return self.input_frame
 
     def render_messages(self, master):
-        for m in self.messages_accessor.get_messages():
+        for m in self.messages_accessor.get_messages()[::-1][:20][::-1]:
             mine = self.is_message_mine(m)
 
             styles = {
