@@ -19,7 +19,7 @@
 #include <iostream>
 
 
-#define SERVER_PORT 1231
+#define SERVER_PORT 1230
 #define QUEUE_SIZE 5
 
 
@@ -332,6 +332,7 @@ void *ThreadBehavior(void *t_data)
             for (int i = 0; i < 1000; ++i) {
                 message[i] = 0;
             }
+            read(th_data->connection_socket_descriptor, message, length !=0 ? length : sizeof(message));
             std::string m(message);
             const std::string &buf = pServer->process(new Request(th_data->connection_socket_descriptor, m)).getText();
 
