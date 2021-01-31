@@ -1,5 +1,4 @@
 from socket import socket
-from this import s
 from threading import Thread
 from typing import List
 
@@ -101,7 +100,7 @@ class SocketConnector:
         self.users_accessor = users_accessor
         self.s = socket()
 
-    def run(self, port=1231):
+    def run(self, port=1233):
         s = self.s
         s.connect(("localhost", port))
 
@@ -120,8 +119,9 @@ class SocketConnector:
                 if request.get_action() == 'newMessage':
                     data = request.get_parts()[0]
                     parts = data.split(",", 1)
-                    if int(parts[0]) == self.current_room:
-                        message = Message(int(parts[0]), self.this_user_id, parts[1])
+                    sender = int(parts[0])
+                    if sender == self.current_room:
+                        message = Message(sender, self.this_user_id, parts[1])
                         self.messages_accessor.store_message(message)
 
                 if request.get_action() == 'your_id':

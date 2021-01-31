@@ -2,6 +2,7 @@ import tkinter as tk
 
 from data import SocketConnector, MessagesAccessor, UsersAccessor
 from models import Message, User
+import ui
 
 
 class Application(tk.Frame):
@@ -20,6 +21,12 @@ class Application(tk.Frame):
         self.users_accessor.bind_on_change(self.create_widgets)
         self.messages_accessor.bind_on_change(self.create_widgets)
         self.master = master
+        self.main_frame = None
+        self.create_widgets()
+
+
+    def create_main_frame(self):
+
         self.main_frame = tk.Frame(self)
         self.main_frame.rowconfigure(0, weight=0)
         self.main_frame.rowconfigure(1, weight=1)
@@ -29,7 +36,6 @@ class Application(tk.Frame):
         # self.main_frame.columnconfigure(1, weight=1)
         self.main_frame.grid()
         self.pack(expand=True)
-        self.create_widgets()
 
     def is_message_mine(self, message: Message) -> bool:
         return message.sender == self.user_id
@@ -38,6 +44,10 @@ class Application(tk.Frame):
         if self.chat_view:
             self.chat_view.destroy()
 
+        if self.main_frame:
+            self.main_frame.destroy()
+
+        self.create_main_frame()
         chat = tk.Canvas(self.main_frame, width=300, height=400)
         self.chat_view = tk.Frame(chat)
         self.render_messages(chat)
@@ -46,7 +56,8 @@ class Application(tk.Frame):
         if self.input_frame:
             self.input_frame.destroy()
 
-        self.get_input_element(self.main_frame).grid(row=1, column=0)
+        if(self.socket.current_room):
+            self.get_input_element(self.main_frame).grid(row=1, column=0)
 
     def get_input_element(self, master):
         self.input_frame = tk.Frame(master=master, background="gray", bd=3)
@@ -61,28 +72,7 @@ class Application(tk.Frame):
         return self.input_frame
 
     def render_messages(self, master):
-
-        for m in self.messages_accessor.get_messages()[-15:]:
-            mine = self.is_message_mine(m)
-
-            styles = {
-                'element': {
-                    'mine': {'bg': 'gray', 'fg': 'black'},
-                    'not_mine': {'bg': 'black', 'fg': 'white'}
-                },
-                'grid': {
-                    'mine': {'sticky': 'w'},
-                    'not_mine': {'sticky': 'e'}
-                }
-            }
-
-            style_element = styles['element']['mine'] if mine else styles['element']['not_mine']
-            style_grid = styles['grid']['mine'] if mine else styles['grid']['not_mine']
-            frame = tk.Frame(master, width=300)
-            message = tk.Label(frame, text=m.body, **style_element)
-            message.pack(side='right' if mine else 'left', expand=True, fill='both')
-            frame.grid(sticky='s')
-            master.columnconfigure(1, weight=1)
+        ui.messages(master, self.messages_accessor.get_messages()[-15:], self.user_id)
 
     def users_nav_bar(self):
         if self.frame_users_nav:
@@ -108,19 +98,20 @@ class Application(tk.Frame):
         frame.grid(row=0, column=1, sticky='e')
 
 
-connector = SocketConnector(1, UsersAccessor(), MessagesAccessor())
-connector.run()
+if __name__ == '__main__':
+    connector = SocketConnector(1, UsersAccessor(), MessagesAccessor())
+    connector.run()
 
-root = tk.Tk()
-root.title('komunikator tekstowy')
-# root.attributes('-zoomed', True)
-# root.columnconfigure(1, weight=1, minsize=800)
-# root.wm_minsize(500,500)
-root.wm_maxsize(500, 500)
-# root.rowconfigure(0, weight=2)
-# root.columnconfigure(0, weight=1)
-# root.columnconfigure(0, weight=1)
-# root.grid_rowconfigure(0, weight=1)
-# root.grid_columnconfigure(0, weight=1)
-app = Application(connector, master=root)
-app.mainloop()
+    root = tk.Tk()
+    root.title('komunikator tekstowy')
+    # root.attributes('-zoomed', True)
+    # root.columnconfigure(1, weight=1, minsize=800)
+    root.wm_minsize(500,500)
+    root.wm_maxsize(500, 500)
+    # root.rowconfigure(0, weight=2)
+    # root.columnconfigure(0, weight=1)
+    # root.columnconfigure(0, weight=1)
+    # root.grid_rowconfigure(0, weight=1)
+    # root.grid_columnconfigure(0, weight=1)
+    app = Application(connector, master=root)
+    app.mainloop()
