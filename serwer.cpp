@@ -134,7 +134,7 @@ class Response{
         std::string l = std::to_string(length);
         l += ':';
         unsigned long zeros_to_begin = bytes - l.size();
-        for (int i = 0; i < zeros_to_begin; ++i) {
+        for (unsigned long i = 0; i < zeros_to_begin; ++i) {
             l.insert(0, "0");
         }
         return l;
@@ -332,12 +332,11 @@ void *ThreadBehavior(void *t_data)
             for (int i = 0; i < 1000; ++i) {
                 message[i] = 0;
             }
-            int read_result = static_cast<int>(read(th_data->connection_socket_descriptor, message, length !=0 ? length : sizeof(message)));
             std::string m(message);
             const std::string &buf = pServer->process(new Request(th_data->connection_socket_descriptor, m)).getText();
 
             write(th_data->connection_socket_descriptor, buf.c_str(), buf.length());
-            printf(message);
+            printf("%s", message);
         }else if(length == -2){
             printf("zerwano");
             pServer->removeUser(th_data->connection_socket_descriptor);
