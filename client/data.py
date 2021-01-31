@@ -101,7 +101,7 @@ class SocketConnector:
         self.users_accessor = users_accessor
         self.s = socket()
 
-    def run(self, port=1230):
+    def run(self, port=1231):
         s = self.s
         s.connect(("localhost", port))
 
@@ -139,10 +139,10 @@ class SocketConnector:
                     print(request.get_parts())
 
                 if request.get_action() == 'loginUser':
-                    s.send(b"0000:getUsers")
+                    s.send(b"0008:getUsers")
 
                 if request.get_action() == 'logoutUser':
-                    s.send(b"0000:getUsers")
+                    s.send(b"0008:getUsers")
 
                 if request.get_action() == 'messages':
                     self.messages_accessor.clean()
